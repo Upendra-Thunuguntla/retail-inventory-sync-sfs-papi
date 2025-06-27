@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+	<secure-properties:config name="secure-properties-config" doc:name="Secure Properties Config" doc:id="b2f889c4-4a80-4993-b4c1-c94abd937cf5" file="properties\secure-${env}.properties" key="${aes.decrypt.key}" />
+	<configuration-properties doc:name="Configuration properties" doc:id="cd71ae89-5aa3-4e97-85ad-fdc92dc9b2eb" file="properties/${env}.properties" />
+	<http:request-config name="sfcc-sapi-config" doc:name="HTTP Request configuration" doc:id="afe9526d-2fbb-4602-ad1a-c7ba8c7e6739" basePath="${basePath}" responseTimeout="${sapi.responseTimeout}">
+		<http:request-connection protocol="HTTPS" host="${retail-sfcc-sapi.host}" />
+		<http:default-headers >
+			<http:default-header key="client_id" value="${sapi.clientId}" />
+			<http:default-header key="client_secret" value="${secure::sapi.clientSecret}" />
+		</http:default-headers>
+	</http:request-config>
+	<http:request-config name="comm-sapi-config" doc:name="HTTP Request configuration" doc:id="a4eaef6c-9732-496b-9083-390251f9c807" basePath="${basePath}" responseTimeout="${sapi.responseTimeout}">
+		<http:request-connection protocol="HTTPS" host="${retail-comm-sapi.host}" />
+		<http:default-headers >
+			<http:default-header key="client_id" value="${sapi.clientId}" />
+			<http:default-header key="client_secret" value="${secure::sapi.clientSecret}" />
+		</http:default-headers>
+	</http:request-config>
+	<http:request-config name="oracle-wms-sapi-config" doc:name="HTTP Request configuration" doc:id="1f85b47c-b0d8-4099-aa1b-66337dbb2f83" basePath="${basePath}"  responseTimeout="${sapi.responseTimeout}">
+		<http:request-connection protocol="HTTPS" host="${retail-oracle-wms-sapi.host}" />
+		<http:default-headers >
+			<http:default-header key="client_id" value="${sapi.clientId}" />
+			<http:default-header key="client_secret" value="${secure::sapi.clientSecret}" />
+		</http:default-headers>
+	</http:request-config>
+</mule>

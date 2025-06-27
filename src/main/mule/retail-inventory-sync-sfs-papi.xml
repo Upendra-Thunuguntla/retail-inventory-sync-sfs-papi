@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="retail-inventory-sync-sfs-papiFlow" doc:id="6138df6a-4997-474d-b3f4-fad6b2896726">
+		<scheduler doc:name="Scheduler" doc:id="b15717ff-85f0-435e-aca2-5b456a117578" disallowConcurrentExecution="true" >
+			<scheduling-strategy >
+				<cron expression="${scheduler.cron}" timeZone="${scheduler.timezone}" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Start Logger" doc:id="5ba9e289-7019-4e02-970f-850d72162427" message='#["Execution Started at : $(now())"]'/>
+		<logger level="INFO" doc:name="End Logger" doc:id="8e2de58f-51c2-4a20-8a22-6249357fbdb8" message='#["Execution Completed at : $(now())"]'/>
+	</flow>
+</mule>
