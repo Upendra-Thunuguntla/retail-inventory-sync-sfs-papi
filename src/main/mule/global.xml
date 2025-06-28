@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
 	<secure-properties:config name="secure-properties-config" doc:name="Secure Properties Config" doc:id="b2f889c4-4a80-4993-b4c1-c94abd937cf5" file="properties\secure-${env}.properties" key="${aes.decrypt.key}" />
 	<configuration-properties doc:name="Configuration properties" doc:id="cd71ae89-5aa3-4e97-85ad-fdc92dc9b2eb" file="properties/${env}.properties" />
 	<http:request-config name="sfcc-sapi-config" doc:name="HTTP Request configuration" doc:id="afe9526d-2fbb-4602-ad1a-c7ba8c7e6739" basePath="${basePath}" responseTimeout="${sapi.responseTimeout}">
@@ -29,4 +30,7 @@ http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/sc
 			<http:default-header key="client_secret" value="${secure::sapi.clientSecret}" />
 		</http:default-headers>
 	</http:request-config>
+
+	<os:config name="os-config" doc:name="ObjectStore Config" doc:id="c3f9da5c-ff77-41a1-83ca-42317f2133dc" />
+	<os:object-store name="summary-os" doc:name="Object store" doc:id="cdfe614b-cf11-4778-bb2c-d76a0ca58200" maxEntries="${os.maxEntries}" entryTtl="${os.ttl}" entryTtlUnit="MINUTES" expirationInterval="${os.expiration}" config-ref="os-config" />
 </mule>

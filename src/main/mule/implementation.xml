@@ -1,5 +1,256 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd"></mule>
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<flow name="fetch-file-flow" doc:id="78e664dd-5090-49b4-9d20-95d15b73909b" >
+		<logger level="INFO" doc:name="log file date" doc:id="52d15416-af8b-4bb7-b11f-8fedf6c044fb" message='#["Current Date to process : $(vars.dateToProcess)"]' />
+		<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="e880f74e-8502-476e-95ba-12a374f07a10" millisBetweenRetries="${retries.gap}">
+			<http:request method="GET" doc:name="GET | oracle-wms-sapi | /inventory" doc:id="08aca46c-ff8c-48ab-9910-aab6aba6fde5" config-ref="oracle-wms-sapi-config" path="/inventory" outputMimeType="application/csv; streaming=true" sendBodyMode="NEVER" requestStreamingMode="AUTO">
+			<http:query-params><![CDATA[#[output application/java
+---
+{
+	date : vars.dateToProcess
+}]]]></http:query-params>
+		</http:request>
+		</until-successful>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="4a80ebd9-b247-41b4-a773-87ba773b5078" type="ANY">
+				<ee:transform doc:name="DW set email payload" doc:id="ecc198c0-7896-4d43-a78b-edc55b794cc0" >
+					<ee:message >
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="emailConfig" ><![CDATA[%dw 2.0
+output json
+import * from dwl::createErrorHtmlBody
+---
+{
+	to: p("mail.error.to"),
+	"subject" : "Issue with fetching given file for " ++ vars.dateToProcess,
+	"body": returnEmailBody(error.suppressedErrors[0].errorMessage.payload default {}),
+}
+]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="send-email-sub-flow" doc:id="7dfec6a3-1d0e-4598-9557-3d32f62deaa0" name="send-email-sub-flow"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="process-file-flow" doc:id="09f0085d-7560-456c-9dd9-a27b2a1abe6e">
+		<scatter-gather doc:name="Scatter-Gather" doc:id="9330d17a-f7aa-45cb-97d5-9c05e8cc3819">
+			<route>
+				<ee:transform doc:name="DW identify valid records" doc:id="a2d4aa01-5fb0-4e8d-a10a-6ca7e12e5474">
+			<ee:message>
+<!-- 				<ee:set-payload resource="dwl/validation-logic.dwl" /> -->
+				<ee:set-payload><![CDATA[%dw 2.0
+
+@StreamCapable()
+input payload application/csv
+
+output application/json deferred=true,indent=false
+
+import * from dwl::validationLogic
+---
+payload filter (isValidRow($))]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<ee:transform doc:name="DW groupBy Stores" doc:id="f567ca02-6ebf-433a-8aea-a7efc03a91d3">
+					<ee:message>
+						<ee:set-payload resource="dwl/groupByStores.dwl" />
+					</ee:message>
+				</ee:transform>
+				<parallel-foreach doc:name="Parallel For Each" doc:id="ac476a96-c8a1-4f3b-9ed5-c6e31ff244d6" collection="#[payload]" maxConcurrency="10">
+					<flow-ref doc:name="save-store-files-flow" doc:id="b953fca0-c99b-4e8d-a48d-6cba5dbb87ef" name="save-store-files-flow" />
+				</parallel-foreach>
+			</route>
+			<route>
+				<ee:transform doc:name="DW identify invalid records" doc:id="d76c91b6-2023-4763-a892-905503eb9824">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+
+@StreamCapable()
+input payload application/csv
+
+output application/json indent=false
+
+import * from dwl::validationLogic
+---
+payload filter (not isValidRow($))]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<choice doc:name="Choice" doc:id="a2fca8b8-7905-4495-9678-8998d35922cd" >
+					<when expression="#[!isEmpty(payload)]">
+						<logger level="INFO" doc:name="Invalid Records" doc:id="59def722-411a-4d02-a518-09edffb784ed" message="Found invalid records" />
+						<flow-ref doc:name="store-invalid-file-flow" doc:id="fe70a84d-16f5-4c52-8f5f-289e7c81a14f" name="store-invalid-file-flow"/>
+					</when>
+					<otherwise >
+						<logger level="INFO" doc:name="No Invalid Records " doc:id="23207aa9-dbb4-4a89-b94f-fcbfad091ca6" message="No Invalid Records Found"/>
+					</otherwise>
+				</choice>
+			</route>
+		</scatter-gather>
+	</flow>
+	<flow name="save-store-files-flow" doc:id="5b3bed9e-b9f9-47e5-bd11-231a314d681f">
+		<ee:transform doc:name="DW set store csv data" doc:id="b9e84f1b-8fbf-4ba2-b346-980543382140">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output text/csv deferred=true
+---
+flatten(payload pluck $)]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="storeId"><![CDATA[%dw 2.0
+output application/java
+---
+(flatten(payload pluck $$))[0]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<set-variable value='#["inventory_$(vars.storeId)_$(now() as String {format : "dd-MM-yyyy"}).csv"]' doc:name="storefileName" doc:id="2bcd8950-a59e-4991-bbbb-c7f53b5d486b" variableName="storefileName" />
+		<try doc:name="Try" doc:id="0041d237-f3c3-41af-aab1-d2f347c49c7d" >
+			<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="dbd25228-66ec-40c2-b554-94826f4e30cd" millisBetweenRetries="${retries.gap}">
+			<http:request method="POST" doc:name="POST | sfcc-sapi | /inventory/{storeId}" doc:id="3e31af63-adf7-452c-a0d5-f6a15b7f4f47" config-ref="sfcc-sapi-config" path='#["/inventory/$(vars.storeId)"]' outputMimeType="text/csv; streaming=true">
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"x-filename" : vars.storeFileName
+}]]]></http:headers>
+		</http:request>
+		</until-successful>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="e3050594-8f24-4576-8a96-3ba28ca3ec9a" >
+					<logger level="INFO" doc:name="Error Log" doc:id="337240b3-1a12-4f5e-b1a2-4a91274cea02" message='#["Unable to save inventory data for store - $(vars.storeId)"]'/>
+					<os:store doc:name="Failed Status" doc:id="9f41fd69-b82b-4403-b456-d5d7d2082539" key="#[vars.storeId]">
+						<os:value ><![CDATA[#["Failed"]]]></os:value>
+					</os:store>
+				</on-error-continue>
+			</error-handler>
+		</try>
+	</flow>
+	<flow name="store-invalid-file-flow" doc:id="76766325-dfd5-4bf5-a0ef-f971f8223370" >
+		<ee:transform doc:name="DW invalid data as CSV" doc:id="3433b439-1155-4701-a4f2-3c0a4991043c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="b0c06482-8944-41a0-ac98-4a3033dab22e" millisBetweenRetries="${retries.gap}" >
+			<http:request method="POST" doc:name="POST | oracle-wms-sapi | /inventory" doc:id="75b3df11-b3f6-4d80-a805-548ae44ebfc7" config-ref="oracle-wms-sapi-config" path="/inventory" outputMimeType="application/csv; streaming=true" sendBodyMode="AUTO" requestStreamingMode="AUTO" >
+				<http:query-params ><![CDATA[#[output application/java
+---
+{
+	date : vars.dateToProcess
+}]]]></http:query-params>
+			</http:request>
+		</until-successful>
+		<ee:transform doc:name="DW set email payload" doc:id="7e1d631f-994d-47cd-9985-a7aaddbe0c22" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="emailConfig" ><![CDATA[%dw 2.0
+output json
+	import * from dwl::createErrorHtmlBody
+---
+{
+	to: p("mail.error.to"),
+	"subject" : "Found Invalid Data " ++ vars.dateToProcess,
+	"body": "Found invalid data and a file with all invalid entires is saved in error folder at source. Please validate and re-process if necessary",
+}
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="send-email-sub-flow" doc:id="97eab901-d0d2-442e-bf96-f08e5fdefa99" name="send-email-sub-flow" />
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="525a1285-466b-4b07-9132-7a5d2c8ae03d" type="ANY" >
+				<ee:transform doc:name="DW set email payload" doc:id="e00cdff7-08aa-4b13-ae77-005ef9273804" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="emailConfig" ><![CDATA[%dw 2.0
+output json
+	import * from dwl::createErrorHtmlBody
+---
+{
+	to: p("mail.error.to"),
+	"subject" : "Issue with saving invalid data file for " ++ vars.dateToProcess,
+	"body": returnEmailBody(error.suppressedErrors[0].errorMessage.payload default {}),
+}
+]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="send-email-sub-flow" doc:id="fa400b0e-ce2b-48d3-9447-a5b1ae35bcae" name="send-email-sub-flow" />
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="archive-file-flow" doc:id="2f1f04b3-e3be-4e60-8b6d-7e67f8336280" >
+		<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="053c0147-5551-4c4e-9c63-894110373a1f" millisBetweenRetries="${retries.gap}" >
+			<http:request method="DELETE" doc:name="DELETE | oracle-wms-sapi | /inventory" doc:id="caf576c9-f2a4-431a-bd25-b2a4ac25c466" config-ref="oracle-wms-sapi-config" path="/inventory" outputMimeType="application/csv; streaming=true" sendBodyMode="NEVER" requestStreamingMode="AUTO" >
+				<http:query-params ><![CDATA[#[output application/java
+---
+{
+	date : vars.dateToProcess
+}]]]></http:query-params>
+			</http:request>
+		</until-successful>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="208ca0c0-e6c6-4d10-893a-7b9441712396" type="ANY" >
+				<ee:transform doc:name="DW set email payload" doc:id="4f3833c7-8e9c-485a-bcae-3060366306e5" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="emailConfig" ><![CDATA[%dw 2.0
+output json
+import * from dwl::createErrorHtmlBody
+---
+{
+	to: p("mail.error.to"),
+	"subject" : "Issue with saving archiving file for " ++ vars.dateToProcess,
+	"body": returnEmailBody(error.suppressedErrors[0].errorMessage.payload default {}),
+}
+]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="send-email-sub-flow" doc:id="e730d37d-8daf-4966-a4e4-1bee4ca2c220" name="send-email-sub-flow" />
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<sub-flow name="send-summary-flow" doc:id="bafdee66-6cb0-4eb1-9ebc-7e7c37c34499" >
+		<os:retrieve-all doc:name="all failed records" doc:id="d7426b9c-5535-40d4-aff0-401b455df91a" objectStore="summary-os"/>
+		<choice doc:name="Choice" doc:id="759f5fdf-aa9d-4ff8-9fba-9f1cf9879b78" >
+			<when expression="#[!isEmpty(payload)]">
+				<ee:transform doc:name="DW set email payload" doc:id="d75df58d-08fd-4792-833d-3dcd30e723ef">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="emailConfig"><![CDATA[%dw 2.0
+output json
+---
+{
+	to: p("mail.error.to"),
+	"subject" : "Failed Stores Summary : " ++ vars.dateToProcess,
+		"body": "<table border='1' cellpadding='6' cellspacing='0' style='border-collapse: collapse;'>
+  <thead>
+    <tr>
+      <th>StoreId</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>" 
+  ++
+  ((entriesOf(payload)
+  ) map (
+    "<tr><td>" ++ $.key ++ "</td><td>" ++ ($.value as String default "") ++ "</td></tr>"
+  ) joinBy "")
+ ++
+"</tbody></table>"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+				<flow-ref doc:name="send-email-sub-flow" doc:id="be98232b-5ab8-486a-8e2c-99950306cda2" name="send-email-sub-flow" />
+				<logger level="INFO" doc:name="Summary Sent" doc:id="d4c7d446-22dc-481b-9809-59e1bec30bf7" message="Failure Summary sent to support team"/>
+				<os:clear doc:name="summary" doc:id="1ee6a5c2-d38b-4456-8c62-75e503d319b1" objectStore="summary-os"/>
+			</when>
+		</choice>
+	</sub-flow>
+
+</mule>

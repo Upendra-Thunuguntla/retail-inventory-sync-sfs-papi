@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+		<flow name="send-email-sub-flow" doc:id="b0870e58-2164-4c1c-b2d7-40e178e5e2f5" >
+		<ee:transform doc:name="DW comm-sapi mapping" doc:id="9e9539a6-c6f3-4321-84be-8853aabb7b35" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	receipents: {
+		to: p("mail.error.to") splitBy ",",
+		subject: vars.emailConfig.subject,
+	},
+	content: [{
+		"type": "text/html",
+		value: vars.emailConfig.body
+	}]
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="POST | comm-sapi | /email/send" doc:id="6b3f87ab-0f87-468c-9358-668176fa76b1" config-ref="comm-sapi-config" path="/email/send"/>
+		<logger level="INFO" doc:name="Success" doc:id="03ac77ce-9b1d-4dfa-af93-4bf9c6a15135" message="Email Sent"/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="cddc1127-b160-4a34-a44d-290b60f518dc" >
+				<logger level="INFO" doc:name="Email Error" doc:id="094157a9-558d-4e61-90d9-5e6508a29d2c" message="Email sending failed"/>
+			</on-error-continue>
+		</error-handler>
+	
+</flow></mule>

@@ -11,6 +11,17 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 			</scheduling-strategy>
 		</scheduler>
 		<logger level="INFO" doc:name="Start Logger" doc:id="5ba9e289-7019-4e02-970f-850d72162427" message='#["Execution Started at : $(now())"]'/>
+		<set-variable value='#[now() as String {format: "yyyy-MM-dd"}]' doc:name="dateToProcess" doc:id="bae88d28-1a34-4bcb-a230-7dd805e45241" variableName="dateToProcess" />
+		<flow-ref doc:name="fetch-file-flow" doc:id="67d24f89-218d-442c-be2c-b89433ab92d0" name="fetch-file-flow"/>
+		<flow-ref doc:name="process-file-flow" doc:id="48ce4168-64f1-4042-8c16-cf23dc708211" name="process-file-flow"/>
+		<flow-ref doc:name="archive-file-flow" doc:id="3dee69f4-e2e7-443d-a014-d433342e9f6c" name="archive-file-flow"/>
+		<flow-ref doc:name="send-summary-flow" doc:id="9cf4ee79-8e22-4ecf-9652-f6bae7523f58" name="send-summary-flow"/>
 		<logger level="INFO" doc:name="End Logger" doc:id="8e2de58f-51c2-4a20-8a22-6249357fbdb8" message='#["Execution Completed at : $(now())"]'/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="96536075-a1d1-43f4-886e-a913f20a89c5" >
+				<logger level="INFO" doc:name="Failed Logger" doc:id="12ada8d4-2091-49d2-b31e-88f3570352a9" message="Sync Failed"/>
+				<logger level="INFO" doc:name="End Logger" doc:id="d1cacd1e-a554-458c-9ae8-af7afecf85dc" message='#["Execution Completed at : $(now())"]' />
+			</on-error-continue>
+		</error-handler>
 	</flow>
 </mule>
