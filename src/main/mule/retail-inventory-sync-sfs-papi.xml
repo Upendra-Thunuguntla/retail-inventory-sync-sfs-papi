@@ -11,7 +11,7 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 			</scheduling-strategy>
 		</scheduler>
 		<logger level="INFO" doc:name="Start Logger" doc:id="5ba9e289-7019-4e02-970f-850d72162427" message='#["Execution Started at : $(now())"]'/>
-		<set-variable value='#[now() as String {format: "yyyy-MM-dd"}]' doc:name="dateToProcess" doc:id="bae88d28-1a34-4bcb-a230-7dd805e45241" variableName="dateToProcess" />
+		<set-variable value='#[now() as String {format: "dd-MM-yyyy"}]' doc:name="dateToProcess" doc:id="bae88d28-1a34-4bcb-a230-7dd805e45241" variableName="dateToProcess" />
 		<flow-ref doc:name="fetch-file-flow" doc:id="67d24f89-218d-442c-be2c-b89433ab92d0" name="fetch-file-flow"/>
 		<flow-ref doc:name="batch-processingFlow" doc:id="47f85387-0812-4aaa-bb2e-407b55caa55a" name="batch-processingFlow"/>
 		<logger level="INFO" doc:name="End Logger" doc:id="8e2de58f-51c2-4a20-8a22-6249357fbdb8" message='#["Execution Completed at : $(now())"]'/>
