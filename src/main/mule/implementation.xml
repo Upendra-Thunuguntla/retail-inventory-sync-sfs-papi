@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
 	<flow name="fetch-file-flow" doc:id="78e664dd-5090-49b4-9d20-95d15b73909b" >
 		<logger level="INFO" doc:name="log file date" doc:id="52d15416-af8b-4bb7-b11f-8fedf6c044fb" message='#["Current Date to process : $(vars.dateToProcess)"]' />
 		<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="e880f74e-8502-476e-95ba-12a374f07a10" millisBetweenRetries="${retries.gap}">
@@ -39,75 +40,7 @@ import * from dwl::createErrorHtmlBody
 			</on-error-propagate>
 		</error-handler>
 	</flow>
-	<flow name="process-file-flow" doc:id="09f0085d-7560-456c-9dd9-a27b2a1abe6e">
-		<scatter-gather doc:name="Scatter-Gather" doc:id="9330d17a-f7aa-45cb-97d5-9c05e8cc3819">
-			<route>
-				<ee:transform doc:name="DW identify valid records" doc:id="a2d4aa01-5fb0-4e8d-a10a-6ca7e12e5474">
-			<ee:message>
-<!-- 				<ee:set-payload resource="dwl/validation-logic.dwl" /> -->
-				<ee:set-payload><![CDATA[%dw 2.0
-
-@StreamCapable()
-input payload application/csv
-
-output application/json deferred=true,indent=false
-
-import * from dwl::validationLogic
----
-payload filter (isValidRow($))]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-				<ee:transform doc:name="DW groupBy Stores" doc:id="f567ca02-6ebf-433a-8aea-a7efc03a91d3">
-					<ee:message>
-						<ee:set-payload resource="dwl/groupByStores.dwl" />
-					</ee:message>
-				</ee:transform>
-				<parallel-foreach doc:name="Parallel For Each" doc:id="ac476a96-c8a1-4f3b-9ed5-c6e31ff244d6" collection="#[payload]" maxConcurrency="10">
-					<flow-ref doc:name="save-store-files-flow" doc:id="b953fca0-c99b-4e8d-a48d-6cba5dbb87ef" name="save-store-files-flow" />
-				</parallel-foreach>
-			</route>
-			<route>
-				<ee:transform doc:name="DW identify invalid records" doc:id="d76c91b6-2023-4763-a892-905503eb9824">
-					<ee:message>
-						<ee:set-payload><![CDATA[%dw 2.0
-
-@StreamCapable()
-input payload application/csv
-
-output application/json indent=false
-
-import * from dwl::validationLogic
----
-payload filter (not isValidRow($))]]></ee:set-payload>
-					</ee:message>
-				</ee:transform>
-				<choice doc:name="Choice" doc:id="a2fca8b8-7905-4495-9678-8998d35922cd" >
-					<when expression="#[!isEmpty(payload)]">
-						<logger level="INFO" doc:name="Invalid Records" doc:id="59def722-411a-4d02-a518-09edffb784ed" message="Found invalid records" />
-						<flow-ref doc:name="store-invalid-file-flow" doc:id="fe70a84d-16f5-4c52-8f5f-289e7c81a14f" name="store-invalid-file-flow"/>
-					</when>
-					<otherwise >
-						<logger level="INFO" doc:name="No Invalid Records " doc:id="23207aa9-dbb4-4a89-b94f-fcbfad091ca6" message="No Invalid Records Found"/>
-					</otherwise>
-				</choice>
-			</route>
-		</scatter-gather>
-	</flow>
 	<flow name="save-store-files-flow" doc:id="5b3bed9e-b9f9-47e5-bd11-231a314d681f">
-		<ee:transform doc:name="DW set store csv data" doc:id="b9e84f1b-8fbf-4ba2-b346-980543382140">
-			<ee:message>
-				<ee:set-payload><![CDATA[%dw 2.0
-output text/csv deferred=true
----
-flatten(payload pluck $)]]></ee:set-payload>
-			</ee:message>
-			<ee:variables>
-				<ee:set-variable variableName="storeId"><![CDATA[%dw 2.0
-output application/java
----
-(flatten(payload pluck $$))[0]]]></ee:set-variable>
-			</ee:variables>
-		</ee:transform>
 		<set-variable value='#["inventory_$(vars.storeId)_$(now() as String {format : "dd-MM-yyyy"}).csv"]' doc:name="storefileName" doc:id="2bcd8950-a59e-4991-bbbb-c7f53b5d486b" variableName="storefileName" />
 		<try doc:name="Try" doc:id="0041d237-f3c3-41af-aab1-d2f347c49c7d" >
 			<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="dbd25228-66ec-40c2-b554-94826f4e30cd" millisBetweenRetries="${retries.gap}">
@@ -130,27 +63,31 @@ output application/java
 		</try>
 	</flow>
 	<flow name="store-invalid-file-flow" doc:id="76766325-dfd5-4bf5-a0ef-f971f8223370" >
-		<ee:transform doc:name="DW invalid data as CSV" doc:id="3433b439-1155-4701-a4f2-3c0a4991043c" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/csv
+		<file:read doc:name="invalid file" doc:id="0c114439-1dda-49c2-bb4b-8fd6d6848ba2" config-ref="File_Config" path="invalid.csv"/>
+		<choice doc:name="Choice" doc:id="414ac027-035e-47d7-a4d1-68ebb6e7caf6" >
+			<when expression="#[! isEmpty(payload)]">
+				<logger level="INFO" doc:name="sending invalid file" doc:id="134e5788-79a1-4007-87e8-d29ff66a0ac5" message="sending invalid file data" />
+				<ee:transform doc:name="DW invalid data as CSV" doc:id="3433b439-1155-4701-a4f2-3c0a4991043c">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/csv deferred=true
 ---
 payload]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="b0c06482-8944-41a0-ac98-4a3033dab22e" millisBetweenRetries="${retries.gap}" >
-			<http:request method="POST" doc:name="POST | oracle-wms-sapi | /inventory" doc:id="75b3df11-b3f6-4d80-a805-548ae44ebfc7" config-ref="oracle-wms-sapi-config" path="/inventory" outputMimeType="application/csv; streaming=true" sendBodyMode="AUTO" requestStreamingMode="AUTO" >
-				<http:query-params ><![CDATA[#[output application/java
+				<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="b0c06482-8944-41a0-ac98-4a3033dab22e" millisBetweenRetries="${retries.gap}">
+			<http:request method="POST" doc:name="POST | oracle-wms-sapi | /inventory" doc:id="75b3df11-b3f6-4d80-a805-548ae44ebfc7" config-ref="oracle-wms-sapi-config" path="/inventory" outputMimeType="application/csv; streaming=true" sendBodyMode="AUTO" requestStreamingMode="AUTO">
+				<http:query-params><![CDATA[#[output application/java
 ---
 {
 	date : vars.dateToProcess
 }]]]></http:query-params>
 			</http:request>
 		</until-successful>
-		<ee:transform doc:name="DW set email payload" doc:id="7e1d631f-994d-47cd-9985-a7aaddbe0c22" >
+				<ee:transform doc:name="DW set email payload" doc:id="7e1d631f-994d-47cd-9985-a7aaddbe0c22">
 			<ee:message />
-			<ee:variables >
-				<ee:set-variable variableName="emailConfig" ><![CDATA[%dw 2.0
+			<ee:variables>
+				<ee:set-variable variableName="emailConfig"><![CDATA[%dw 2.0
 output json
 	import * from dwl::createErrorHtmlBody
 ---
@@ -162,7 +99,12 @@ output json
 ]]></ee:set-variable>
 			</ee:variables>
 		</ee:transform>
-		<flow-ref doc:name="send-email-sub-flow" doc:id="97eab901-d0d2-442e-bf96-f08e5fdefa99" name="send-email-sub-flow" />
+				<flow-ref doc:name="send-email-sub-flow" doc:id="97eab901-d0d2-442e-bf96-f08e5fdefa99" name="send-email-sub-flow" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="No invalid data" doc:id="28b5c1fe-9f3b-4295-8494-fc3fb68ea160" message="No invalid data found"/>
+			</otherwise>
+		</choice>
 		<error-handler >
 			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="525a1285-466b-4b07-9132-7a5d2c8ae03d" type="ANY" >
 				<ee:transform doc:name="DW set email payload" doc:id="e00cdff7-08aa-4b13-ae77-005ef9273804" >
@@ -194,8 +136,10 @@ output json
 }]]]></http:query-params>
 			</http:request>
 		</until-successful>
+		<logger level="INFO" doc:name="Logger" doc:id="cb05bc2a-498d-46de-ad2d-c59ace48583a" message="File moved to archive location"/>
 		<error-handler >
 			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="208ca0c0-e6c6-4d10-893a-7b9441712396" type="ANY" >
+				<logger level="INFO" doc:name="Logger" doc:id="7cc3aeb5-212b-45f8-bb93-47a25f402011" message="Error while moving file to archive location"/>
 				<ee:transform doc:name="DW set email payload" doc:id="4f3833c7-8e9c-485a-bcae-3060366306e5" >
 					<ee:message />
 					<ee:variables >
