@@ -11,13 +11,13 @@ http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/fil
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 	<secure-properties:config name="secure-properties-config" doc:name="Secure Properties Config" doc:id="b2f889c4-4a80-4993-b4c1-c94abd937cf5" file="properties\secure-${env}.properties" key="${aes.decrypt.key}" />
 	<configuration-properties doc:name="Configuration properties" doc:id="cd71ae89-5aa3-4e97-85ad-fdc92dc9b2eb" file="properties/${env}.properties" />
-	<http:request-config name="sfcc-sapi-config" doc:name="HTTP Request configuration" doc:id="afe9526d-2fbb-4602-ad1a-c7ba8c7e6739" basePath="${basePath}" responseTimeout="${sapi.responseTimeout}">
-		<http:request-connection protocol="HTTPS" host="${retail-sfcc-sapi.host}" />
-		<http:default-headers >
-			<http:default-header key="client_id" value="${sapi.clientId}" />
-			<http:default-header key="client_secret" value="${secure::sapi.clientSecret}" />
-		</http:default-headers>
-	</http:request-config>
+<!-- 	<http:request-config name="sfcc-sapi-config" doc:name="HTTP Request configuration" doc:id="afe9526d-2fbb-4602-ad1a-c7ba8c7e6739" basePath="${basePath}" responseTimeout="${sapi.responseTimeout}"> -->
+<!-- 		<http:request-connection protocol="HTTPS" host="${retail-sfcc-sapi.host}" /> -->
+<!-- 		<http:default-headers > -->
+<!-- 			<http:default-header key="client_id" value="${sapi.clientId}" /> -->
+<!-- 			<http:default-header key="client_secret" value="${secure::sapi.clientSecret}" /> -->
+<!-- 		</http:default-headers> -->
+<!-- 	</http:request-config> -->
 	<http:request-config name="comm-sapi-config" doc:name="HTTP Request configuration" doc:id="a4eaef6c-9732-496b-9083-390251f9c807" basePath="${basePath}" responseTimeout="${sapi.responseTimeout}">
 		<http:request-connection protocol="HTTPS" host="${retail-comm-sapi.host}" />
 		<http:default-headers >
@@ -25,21 +25,24 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 			<http:default-header key="client_secret" value="${secure::sapi.clientSecret}" />
 		</http:default-headers>
 	</http:request-config>
-	<http:request-config name="oracle-wms-sapi-config" doc:name="HTTP Request configuration" doc:id="1f85b47c-b0d8-4099-aa1b-66337dbb2f83" basePath="${basePath}"  responseTimeout="${sapi.responseTimeout}">
-		<http:request-connection protocol="HTTPS" host="${retail-oracle-wms-sapi.host}" />
-		<http:default-headers >
-			<http:default-header key="client_id" value="${sapi.clientId}" />
-			<http:default-header key="client_secret" value="${secure::sapi.clientSecret}" />
-		</http:default-headers>
-	</http:request-config>
+<!-- 	<http:request-config name="oracle-wms-sapi-config" doc:name="HTTP Request configuration" doc:id="ed169550-8f06-4a57-b681-0a5f1e42c943" basePath="${basePath}"  responseTimeout="${sapi.responseTimeout}"> -->
+<!-- 		<http:request-connection protocol="HTTPS" host="${retail-oracle-wms-sapi.host}" /> -->
+<!-- 		<http:default-headers > -->
+<!-- 			<http:default-header key="client_id" value="${sapi.clientId}" /> -->
+<!-- 			<http:default-header key="client_secret" value="${secure::sapi.clientSecret}" /> -->
+<!-- 		</http:default-headers> -->
+<!-- 	</http:request-config> -->
 	<global-property doc:name="Global Property" doc:id="134f7dca-4580-4863-8f1c-a73dc5ec2ee6" name="env" value="dev" />
 	<global-property doc:name="Global Property" doc:id="6b1967d6-49e9-4e72-82e5-d0dcd65e76ba" name="aes.decrypt.key" value="Tb4ye1Up9S0VaNL9" />
 
 	<os:config name="os-config" doc:name="ObjectStore Config" doc:id="c3f9da5c-ff77-41a1-83ca-42317f2133dc" />
 	<os:object-store name="summary-os" doc:name="Object store" doc:id="cdfe614b-cf11-4778-bb2c-d76a0ca58200" maxEntries="${os.maxEntries}" entryTtl="${os.ttl}" entryTtlUnit="MINUTES" expirationInterval="${os.expiration}" config-ref="os-config" />
-	<file:config name="File_Config" doc:name="File Config" doc:id="935bde8a-760f-448c-aa6d-ab0b65c3d546" >
+	<file:config name="tmp-file-config" doc:name="File Config" doc:id="935bde8a-760f-448c-aa6d-ab0b65c3d546" >
 		<file:connection workingDir="/tmp" />
 	</file:config>
 	<os:object-store name="cache-os" doc:name="Object store" doc:id="af434016-9221-447b-bb13-820210b9bf43" maxEntries="${os.maxEntries}" entryTtl="${os.ttl}" entryTtlUnit="MINUTES" expirationInterval="${os.expiration}" config-ref="os-config" />
 	<ee:object-store-caching-strategy name="cache-config" doc:name="Caching Strategy" doc:id="91a3083f-5f30-4c59-8f4e-a32f6c0430bb" keyGenerationExpression="#[vars.storeId]" objectStore="cache-os" />
+	<file:config name="retail-local-config" doc:name="File Config" doc:id="be321775-562b-4525-8f75-6b29dc35d71a" >
+		<file:connection workingDir="\tmp\retail" />
+	</file:config>
 </mule>

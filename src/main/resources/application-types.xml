@@ -553,15 +553,6 @@ type auto_76766325_dfd5_4bf5_a0ef_f971f8223370_Output_Variables_emailConfig = An
 ]]></types:shape>
     </types:type>
   </types:catalog>
-  <types:enrichment select="#08aca46c-ff8c-48ab-9910-aab6aba6fde5">
-    <types:processor-declaration>
-      <types:output-event>
-        <types:message>
-          <types:payload type="inventory-file-type"/>
-        </types:message>
-      </types:output-event>
-    </types:processor-declaration>
-  </types:enrichment>
   <types:enrichment select="#67d24f89-218d-442c-be2c-b89433ab92d0">
     <types:processor-declaration>
       <types:output-event>
