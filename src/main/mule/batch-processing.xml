@@ -8,10 +8,10 @@ http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/fil
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
 	<flow name="batch-processingFlow" doc:id="9edff3d0-e95d-4c6c-9d38-732071c2d743">
-		<batch:job jobName="batch-processingBatch_Job" doc:id="28cfbb64-3d11-4805-883c-11d90c433489" maxFailedRecords="-1" blockSize="10000">
+		<batch:job jobName="batch-processingBatch_Job" doc:id="28cfbb64-3d11-4805-883c-11d90c433489" maxFailedRecords="-1" blockSize="${batch.blockSize}">
 			<batch:process-records>
 				<batch:step name="Batch_Step" doc:id="08362c37-b2c5-4ccd-9b37-b3fe0eaf9aed" acceptPolicy="ALL">
-					<batch:aggregator doc:name="Batch Aggregator" doc:id="360f8adf-5adf-4fb2-a588-69950c001e1e" size="10000" preserveMimeTypes="true">
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="360f8adf-5adf-4fb2-a588-69950c001e1e" size="${batch.agg.size}" preserveMimeTypes="true">
 						<flow-ref doc:name="aggregate-flow" doc:id="3a3c2f37-cf3f-4593-8ea3-ad948c67e078" name="aggregate-flow" />
 					</batch:aggregator>
 					<ee:transform doc:name="DW set payload" doc:id="ad805e0a-302e-418c-9113-235bf43d837d">
@@ -104,7 +104,6 @@ payload]]></ee:set-payload>
 				</ee:transform>
 					<error-handler>
 						<on-error-continue enableNotifications="false" logException="false" doc:name="On Error Continue" doc:id="e7e46fa9-7c1a-40ab-a88f-05aebf97c55b">
-							<logger level="INFO" doc:name="Logger" doc:id="4ba98aec-1176-48e5-adcf-402fc248cbb7" message="Already present in cache OS" />
 							<ee:transform doc:name="csv without header" doc:id="8a0f0c5e-54cb-4965-a653-c93cc778b0df">
 								<ee:message>
 									<ee:set-payload><![CDATA[%dw 2.0
@@ -132,12 +131,14 @@ payload]]></ee:set-payload>
 	</flow>
 	<sub-flow name="processing-last-steps-flow" doc:id="67bf7b63-764d-4122-a8ac-da9139cd8260" >
 		<file:list doc:name="all local files" doc:id="fa538e65-ed08-48a2-9e89-0cf3ea8128b0" config-ref="File_Config" directoryPath="store_data" recursive="true">
-			<file:matcher/>
+			<file:matcher directories="EXCLUDE"/>
 		</file:list>
+		<logger level="INFO" doc:name="print file count" doc:id="8fecc811-f792-4aa8-9108-e4c3d1909b95" message='#["Total Files to be sent to SCC - $(sizeOf(payload))"]'/>
 		<parallel-foreach doc:name="Parallel For Each" doc:id="4b3f2772-9f51-43f4-b7d7-8d4fb13125f0" collection="#[payload]" maxConcurrency="10">
 			<set-variable value='#[(attributes.fileName splitBy ".")[0]]' doc:name="storeId" doc:id="65b6879e-3774-48cf-804b-1a34f2bfa1f7" variableName="storeId"/>
+			<set-variable value="#[attributes]" doc:name="fileAttribs" doc:id="bd2ce50f-4050-40fa-a6bb-b5ab7500c5ca" variableName="fileAttribs"/>
 			<flow-ref doc:name="save-store-files-flow" doc:id="2ae1f60c-36e0-46e2-b37e-e7c7107cb25c" name="save-store-files-flow"/>
-			<file:delete doc:name="processed file" doc:id="dd44416a-5e78-400e-94a4-6c24b43c13a8" config-ref="File_Config" path="#[attributes.path]"/>
+			<file:delete doc:name="processed file" doc:id="dd44416a-5e78-400e-94a4-6c24b43c13a8" config-ref="File_Config" path="#[vars.fileAttribs.path]"/>
 		</parallel-foreach>
 		<logger level="INFO" doc:name="success" doc:id="36b1f3bc-dc0d-465b-ac93-1fae552fd2b9" message="All Store wise files saved to SFTP."/>
 		<flow-ref doc:name="store-invalid-file-flow" doc:id="4ed1e2be-39e0-4805-a41b-6372c1ec75fc" name="store-invalid-file-flow"/>

@@ -64,8 +64,10 @@ import * from dwl::createErrorHtmlBody
 	</flow>
 	<flow name="store-invalid-file-flow" doc:id="76766325-dfd5-4bf5-a0ef-f971f8223370" >
 		<file:read doc:name="invalid file" doc:id="0c114439-1dda-49c2-bb4b-8fd6d6848ba2" config-ref="File_Config" path="invalid.csv"/>
+		<set-variable value="#[attributes]" doc:name="invalidFileAttribs" doc:id="19dd749f-29d2-4363-88c0-8e4e7bde5b80" variableName="invalidFileAttribs"/>
+		<logger level="INFO" doc:name="log invalid file attributes" doc:id="12e65405-4fd1-44ee-9a10-59f315b876a5" message="#[attributes]"/>
 		<choice doc:name="Choice" doc:id="414ac027-035e-47d7-a4d1-68ebb6e7caf6" >
-			<when expression="#[! isEmpty(payload)]">
+			<when expression="#[attributes.size &gt; 1]">
 				<logger level="INFO" doc:name="sending invalid file" doc:id="134e5788-79a1-4007-87e8-d29ff66a0ac5" message="sending invalid file data" />
 				<ee:transform doc:name="DW invalid data as CSV" doc:id="3433b439-1155-4701-a4f2-3c0a4991043c">
 			<ee:message>
@@ -100,6 +102,7 @@ output json
 			</ee:variables>
 		</ee:transform>
 				<flow-ref doc:name="send-email-sub-flow" doc:id="97eab901-d0d2-442e-bf96-f08e5fdefa99" name="send-email-sub-flow" />
+				<file:delete doc:name="invalid file" doc:id="dffb5e7e-db53-4f66-8ea1-da17c19f58df" config-ref="File_Config" path="#[vars.invalidFileAttribs.path]"/>
 			</when>
 			<otherwise >
 				<logger level="INFO" doc:name="No invalid data" doc:id="28b5c1fe-9f3b-4295-8494-fc3fb68ea160" message="No invalid data found"/>
