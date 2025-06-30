@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+	<munit:config name="retail-inventory-sync-sfs-papi-test-suite.xml" />
+	<munit:test name="retail-inventory-sync-sfs-papi-test-suite-retail-inventory-sync-sfs-papiFlowTest" doc:id="736d4fe6-2dbb-4a52-9af3-37cb70793e54" description="Test">
+		<munit:behavior >
+			<munit-tools:mock-when doc:name="flow ref" doc:id="64bd0d2c-ed7b-4c39-bd4c-763eaf9436bf" processor="flow-ref">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="fetch-file-flow" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="67d24f89-218d-442c-be2c-b89433ab92d0" attributeName="doc:id" />
+					<munit-tools:with-attribute whereValue="fetch-file-flow" attributeName="name" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:error typeId="HTTP:CONNECTIVITY" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to retail-inventory-sync-sfs-papiFlow" doc:id="808b387a-4221-48c3-a93b-5055ad8eb224" name="retail-inventory-sync-sfs-papiFlow"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:verify-call doc:name="Verify call" doc:id="b38a67db-6a31-46f2-9c76-6b2331159210" processor="logger">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="INFO" attributeName="level" />
+					<munit-tools:with-attribute whereValue="Failed Logger" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="12ada8d4-2091-49d2-b31e-88f3570352a9" attributeName="doc:id" />
+					<munit-tools:with-attribute whereValue="Sync Failed" attributeName="message" />
+				</munit-tools:with-attributes>
+			</munit-tools:verify-call>
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

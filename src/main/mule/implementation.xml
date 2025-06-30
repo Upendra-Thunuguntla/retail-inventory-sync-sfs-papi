@@ -9,7 +9,7 @@ http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/cu
 	<flow name="fetch-file-flow" doc:id="78e664dd-5090-49b4-9d20-95d15b73909b" >
 		<logger level="INFO" doc:name="log file date" doc:id="52d15416-af8b-4bb7-b11f-8fedf6c044fb" message='#["Current Date to process : $(vars.dateToProcess)"]' />
 		<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="e880f74e-8502-476e-95ba-12a374f07a10" millisBetweenRetries="${retries.gap}">
-			<http:request method="GET" doc:name="GET | oracle-wms-sapi | /inventory" doc:id="08aca46c-ff8c-48ab-9910-aab6aba6fde5" config-ref="oracle-wms-sapi-config" path="/inventory" outputMimeType="application/csv; streaming=true" sendBodyMode="NEVER" requestStreamingMode="AUTO">
+			<http:request method="GET" doc:name="GET | oracle-wms-sapi | /inventory" doc:id="08aca46c-ff8c-48ab-9910-aab6aba6fde5" config-ref="oracle-wms-sapi-config" path="/inventory" outputMimeType="application/csv; streaming=true; header=true" sendBodyMode="NEVER" requestStreamingMode="AUTO">
 			<http:query-params><![CDATA[#[output application/java
 ---
 {
