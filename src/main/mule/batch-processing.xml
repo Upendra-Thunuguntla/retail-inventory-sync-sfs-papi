@@ -11,13 +11,19 @@ http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/cu
 		<batch:job jobName="batch-processingBatch_Job" doc:id="28cfbb64-3d11-4805-883c-11d90c433489" maxFailedRecords="-1" blockSize="${batch.blockSize}">
 			<batch:process-records>
 				<batch:step name="Batch_Step" doc:id="08362c37-b2c5-4ccd-9b37-b3fe0eaf9aed" acceptPolicy="ALL">
-					<batch:aggregator doc:name="Batch Aggregator" doc:id="360f8adf-5adf-4fb2-a588-69950c001e1e" size="${batch.agg.size}" preserveMimeTypes="true">
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="360f8adf-5adf-4fb2-a588-69950c001e1e" preserveMimeTypes="true" streaming="true">
+						<set-variable value='#[now() as String {format: "dd-MM-yyyy"}]' doc:name="dateToProcess" doc:id="e7ff68de-395b-4ea4-9fce-c456557345a6" variableName="dateToProcess"/>
+						<logger level="INFO" doc:name="Logger" doc:id="5c005722-e2d9-4ab1-98b3-cef45b979df8" message="Aggregate"/>
 						<flow-ref doc:name="aggregate-flow" doc:id="3a3c2f37-cf3f-4593-8ea3-ad948c67e078" name="aggregate-flow" />
 					</batch:aggregator>
 					<ee:transform doc:name="DW set payload" doc:id="ad805e0a-302e-418c-9113-235bf43d837d">
 						<ee:message>
 							<ee:set-payload><![CDATA[%dw 2.0
-output application/json indent=false
+
+@StreamCapable()
+input payload application/csv
+
+output application/csv deferred=true,header=true
 ---
 payload[0]]]></ee:set-payload>
 						</ee:message>
@@ -30,50 +36,39 @@ payload[0]]]></ee:set-payload>
 			</batch:on-complete>
 		</batch:job>
 	</flow>
+	<flow name="batch-processingFlow1" doc:id="ea3aec19-8906-499c-81d0-87de79d2d0ab">
+		<foreach doc:name="For Each" doc:id="34f9d810-c4ff-42cb-85dc-45f842d09199" collection="#[payload]" batchSize="${batch.blockSize}">
+			<logger level="INFO" doc:name="Logger" doc:id="395de844-868e-44b8-b739-d9250a7b5f0d" message='#["Loop count : $(vars.counter)"]'/>
+			<flow-ref doc:name="aggregate-flow" doc:id="41c9bfc9-cd83-47aa-bf3a-93135feb2cf6" name="aggregate-flow"/>
+		</foreach>
+		<os:clear doc:name="cache" doc:id="553299d3-3a8a-40de-b6bd-d8784df0a130" objectStore="cache-os" />
+		<flow-ref doc:name="processing-last-steps-flow" doc:id="07a98a00-2892-4c29-88bb-b467319b00fe" name="processing-last-steps-flow" />
+	</flow>
 	<sub-flow name="aggregate-flow" doc:id="1eea6260-b3cc-40dd-a815-b15bc3adf964">
-		<ee:transform doc:name="DW identify valid records" doc:id="65a9d339-25ff-4fb2-aa19-4abd80ee0141">
-							<ee:message>
-								<ee:set-payload><![CDATA[%dw 2.0
+		<scatter-gather doc:name="Scatter-Gather" doc:id="a4dc5347-46c7-4d24-a6db-38f295dad16d">
+							<route>
+				<ee:transform doc:name="DW identify valid records" doc:id="2e0d785d-3f57-4e06-9189-19f7dd75cee8">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
 
-//@StreamCapable()
-//input payload application/csv
+@StreamCapable()
+input payload application/csv
 
-output application/json indent=false
+output application/csv deferred=true,header=true
 
 import * from dwl::validationLogic
 ---
-{
-	valid : payload filter (isValidRow($)),
-	invalid : payload filter (!isValidRow($))
-}]]></ee:set-payload>
-							</ee:message>
-						</ee:transform>
-		<scatter-gather doc:name="Scatter-Gather" doc:id="a4dc5347-46c7-4d24-a6db-38f295dad16d">
-							<route>
+flatten(payload) filter (isValidRow($))
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
 				<ee:transform doc:name="DW groupBy Stores" doc:id="6186b69a-d86a-4d94-9d84-06cb675d551d">
 					<ee:message>
 						<ee:set-payload resource="dwl/groupByStores.dwl" />
 					</ee:message>
 				</ee:transform>
 								<parallel-foreach doc:name="Parallel For Each" doc:id="4d322699-1a5e-493e-aa99-46ae0c2ac247" collection="#[payload]">
-					<flow-ref doc:name="process-storewise-data" doc:id="a346e00e-dd2f-454c-912d-850945afcaa7" name="process-storewise-data" />
-								</parallel-foreach>
-							</route>
-							<route>
-								<ee:transform doc:name="Transform Message" doc:id="14048cc0-d013-4084-96f5-7a570eb533b8">
-									<ee:message>
-										<ee:set-payload><![CDATA[%dw 2.0
-output application/csv deferred=true
----
-payload.invalid]]></ee:set-payload>
-									</ee:message>
-								</ee:transform>
-				<file:write doc:name="Invalid data" doc:id="8218706b-3581-4974-b28d-03a060168852" config-ref="tmp-file-config" path='#["invalid.csv"]' />
-							</route>
-						</scatter-gather>
-	</sub-flow>
-	<flow name="process-storewise-data" doc:id="92dd511b-01a1-4c65-b0a1-ec1b41c13a8e">
-		<ee:transform doc:name="DW set store csv data" doc:id="1563feb2-f7fc-4a36-b709-01ac94c72075">
+					<ee:transform doc:name="DW set store csv data" doc:id="1563feb2-f7fc-4a36-b709-01ac94c72075">
 									<ee:message>
 										<ee:set-payload><![CDATA[%dw 2.0
 output application/json indent=false,deferred=true
@@ -87,6 +82,30 @@ output application/java
 (flatten(payload pluck $$))[0]]]></ee:set-variable>
 									</ee:variables>
 								</ee:transform>
+					<flow-ref doc:name="process-storewise-data" doc:id="a346e00e-dd2f-454c-912d-850945afcaa7" name="process-storewise-data" />
+								</parallel-foreach>
+							</route>
+							<route>
+								<ee:transform doc:name="DW identify invalid records" doc:id="8a6af91c-42e4-442b-adf2-70acc793bc75">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+
+@StreamCapable()
+input payload application/csv
+
+output application/csv deferred=true,header=true
+
+import * from dwl::validationLogic
+---
+flatten(payload) filter (!isValidRow($))
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<file:write doc:name="Invalid data" doc:id="8218706b-3581-4974-b28d-03a060168852" config-ref="retail-local-config" path='#[p("sftp.error.path") ++ "/invalid_$(vars.dateToProcess).csv"]' mode="APPEND"/>
+							</route>
+						</scatter-gather>
+	</sub-flow>
+	<flow name="process-storewise-data" doc:id="92dd511b-01a1-4c65-b0a1-ec1b41c13a8e">
 		<os:contains doc:name="storeId" doc:id="7e605b92-0a1b-4d1c-bcb8-f37fefae6010" key="#[vars.storeId]" objectStore="cache-os" target="isAvailable" />
 		<choice doc:name="Choice" doc:id="e631b263-009b-486c-8090-4444050c10a8">
 			<when expression="#[! vars.isAvailable]">
@@ -97,7 +116,7 @@ output application/java
 					<ee:transform doc:name="csv with header" doc:id="cfb911be-58f5-470a-af2d-bb0beff4e341">
 					<ee:message>
 						<ee:set-payload><![CDATA[%dw 2.0
-output text/csv deferred=true
+output text/csv deferred=true,header=true
 ---
 payload]]></ee:set-payload>
 					</ee:message>
@@ -127,21 +146,10 @@ payload]]></ee:set-payload>
 				</ee:transform>
 			</otherwise>
 		</choice>
-		<file:write doc:name="Store related data" doc:id="153f414b-3aa1-4e73-a9cc-b3252c3b750b" config-ref="tmp-file-config" path='#["store_data/$(vars.storeId).csv"]' mode="APPEND" />
+		<file:write doc:name="Store related Data" doc:id="e873d19a-a638-46be-9395-ce6ad7e2bed0" config-ref="retail-local-config" path='#["$(p("sftp.outbound.path"))/inventory_$(vars.storeId)_$(vars.dateToProcess).csv"]' mode="APPEND"/>
 	</flow>
 	<sub-flow name="processing-last-steps-flow" doc:id="67bf7b63-764d-4122-a8ac-da9139cd8260" >
-		<file:list doc:name="all local files" doc:id="fa538e65-ed08-48a2-9e89-0cf3ea8128b0" config-ref="tmp-file-config" directoryPath="store_data" recursive="true">
-			<file:matcher directories="EXCLUDE"/>
-		</file:list>
-		<logger level="INFO" doc:name="print file count" doc:id="8fecc811-f792-4aa8-9108-e4c3d1909b95" message='#["Total Files to be sent to SCC - $(sizeOf(payload))"]'/>
-		<parallel-foreach doc:name="Parallel For Each" doc:id="4b3f2772-9f51-43f4-b7d7-8d4fb13125f0" collection="#[payload]" maxConcurrency="10">
-			<set-variable value='#[(attributes.fileName splitBy ".")[0]]' doc:name="storeId" doc:id="65b6879e-3774-48cf-804b-1a34f2bfa1f7" variableName="storeId"/>
-			<set-variable value="#[attributes]" doc:name="fileAttribs" doc:id="bd2ce50f-4050-40fa-a6bb-b5ab7500c5ca" variableName="fileAttribs"/>
-			<flow-ref doc:name="save-store-files-flow" doc:id="2ae1f60c-36e0-46e2-b37e-e7c7107cb25c" name="save-store-files-flow"/>
-			<file:delete doc:name="processed file" doc:id="dd44416a-5e78-400e-94a4-6c24b43c13a8" config-ref="tmp-file-config" path="#[vars.fileAttribs.path]"/>
-		</parallel-foreach>
 		<logger level="INFO" doc:name="success" doc:id="36b1f3bc-dc0d-465b-ac93-1fae552fd2b9" message="All Store wise files saved to SFTP."/>
-		<flow-ref doc:name="store-invalid-file-flow" doc:id="4ed1e2be-39e0-4805-a41b-6372c1ec75fc" name="store-invalid-file-flow"/>
 		<flow-ref doc:name="archive-file-flow" doc:id="d0a91b29-34aa-4a63-ba9a-b9c0c1de4f31" name="archive-file-flow" />
 		<flow-ref doc:name="send-summary-flow" doc:id="91d28ab6-95b5-46f8-84cd-db3eda31416c" name="send-summary-flow" />
 		<logger level="INFO" doc:name="End Logger" doc:id="220f99af-edbd-448a-a688-20f9c6185d0c" message='#["Execution Completed at : $(now())"]' />

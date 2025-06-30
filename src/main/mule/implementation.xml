@@ -10,7 +10,9 @@ http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/fil
 	<flow name="fetch-file-flow" doc:id="78e664dd-5090-49b4-9d20-95d15b73909b" >
 		<logger level="INFO" doc:name="log file date" doc:id="52d15416-af8b-4bb7-b11f-8fedf6c044fb" message='#["Current Date to process : $(vars.dateToProcess)"]' />
 		<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="e880f74e-8502-476e-95ba-12a374f07a10" millisBetweenRetries="${retries.gap}">
-			<file:read doc:name="input file" doc:id="ea7cbb11-16dc-4a36-b156-fef4a7c83d4b" config-ref="retail-local-config" path='#[p("sftp.path") ++ "/inventory_$(vars.dateToProcess).csv"]'/>
+			<file:read doc:name="input file" doc:id="ea7cbb11-16dc-4a36-b156-fef4a7c83d4b" config-ref="retail-local-config" path='#[p("sftp.path") ++ "/inventory_$(vars.dateToProcess).csv"]' outputMimeType="application/csv; streaming=true; header=true">
+				<ee:repeatable-file-store-stream inMemorySize="10" bufferUnit="MB" />
+			</file:read>
 		</until-successful>
 		<error-handler >
 			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="4a80ebd9-b247-41b4-a773-87ba773b5078" type="ANY">
@@ -34,24 +36,24 @@ import * from dwl::createErrorHtmlBody
 			</on-error-propagate>
 		</error-handler>
 	</flow>
-	<flow name="save-store-files-flow" doc:id="5b3bed9e-b9f9-47e5-bd11-231a314d681f">
-		<set-variable value='#["inventory_$(vars.storeId)_$(now() as String {format : "dd-MM-yyyy"}).csv"]' doc:name="storefileName" doc:id="2bcd8950-a59e-4991-bbbb-c7f53b5d486b" variableName="storefileName" />
-		<try doc:name="Try" doc:id="0041d237-f3c3-41af-aab1-d2f347c49c7d" >
-			<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="dbd25228-66ec-40c2-b554-94826f4e30cd" millisBetweenRetries="${retries.gap}">
-				<file:write doc:name="Store related Data" doc:id="5d9813a5-60e5-455f-b204-0ac13dc3dff5" config-ref="retail-local-config" path='#["$(p("sftp.outbound.path"))/$(vars.storefileName)"]'/>
-		</until-successful>
-			<error-handler >
-				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="e3050594-8f24-4576-8a96-3ba28ca3ec9a" >
-					<logger level="INFO" doc:name="Error Log" doc:id="337240b3-1a12-4f5e-b1a2-4a91274cea02" message='#["Unable to save inventory data for store - $(vars.storeId)"]'/>
-					<os:store doc:name="Failed Status" doc:id="9f41fd69-b82b-4403-b456-d5d7d2082539" key="#[vars.storeId]">
-						<os:value ><![CDATA[#["Failed"]]]></os:value>
-					</os:store>
-				</on-error-continue>
-			</error-handler>
-		</try>
-	</flow>
+<!-- 	<flow name="save-store-files-flow" doc:id="5b3bed9e-b9f9-47e5-bd11-231a314d681f"> -->
+<!-- 		<set-variable value='#["inventory_$(vars.storeId)_$(now() as String {format : "dd-MM-yyyy"}).csv"]' doc:name="storefileName" doc:id="2bcd8950-a59e-4991-bbbb-c7f53b5d486b" variableName="storefileName" /> -->
+<!-- 		<try doc:name="Try" doc:id="0041d237-f3c3-41af-aab1-d2f347c49c7d" > -->
+<!-- 			<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="dbd25228-66ec-40c2-b554-94826f4e30cd" millisBetweenRetries="${retries.gap}"> -->
+<!-- 				<file:write doc:name="Store related Data" doc:id="5d9813a5-60e5-455f-b204-0ac13dc3dff5" config-ref="retail-local-config" path='#["$(p("sftp.outbound.path"))/$(vars.storefileName)"]'/> -->
+<!-- 		</until-successful> -->
+<!-- 			<error-handler > -->
+<!-- 				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="e3050594-8f24-4576-8a96-3ba28ca3ec9a" > -->
+<!-- 					<logger level="INFO" doc:name="Error Log" doc:id="337240b3-1a12-4f5e-b1a2-4a91274cea02" message='#["Unable to save inventory data for store - $(vars.storeId)"]'/> -->
+<!-- 					<os:store doc:name="Failed Status" doc:id="9f41fd69-b82b-4403-b456-d5d7d2082539" key="#[vars.storeId]"> -->
+<!-- 						<os:value ><![CDATA[#["Failed"]]]></os:value> -->
+<!-- 					</os:store> -->
+<!-- 				</on-error-continue> -->
+<!-- 			</error-handler> -->
+<!-- 		</try> -->
+<!-- 	</flow> -->
 	<flow name="store-invalid-file-flow" doc:id="76766325-dfd5-4bf5-a0ef-f971f8223370" >
-		<file:read doc:name="invalid file" doc:id="0c114439-1dda-49c2-bb4b-8fd6d6848ba2" config-ref="tmp-file-config" path="invalid.csv"/>
+		<!-- [STUDIO:"invalid file"]<file:read doc:name="invalid file" doc:id="0c114439-1dda-49c2-bb4b-8fd6d6848ba2" config-ref="tmp-file-config" path="invalid.csv" outputMimeType="application/csv; streaming=true"/> [STUDIO] -->
 		<set-variable value="#[attributes]" doc:name="invalidFileAttribs" doc:id="19dd749f-29d2-4363-88c0-8e4e7bde5b80" variableName="invalidFileAttribs"/>
 		<logger level="INFO" doc:name="log invalid file attributes" doc:id="12e65405-4fd1-44ee-9a10-59f315b876a5" message="#[attributes]"/>
 		<choice doc:name="Choice" doc:id="414ac027-035e-47d7-a4d1-68ebb6e7caf6" >
@@ -84,7 +86,7 @@ output json
 			</ee:variables>
 		</ee:transform>
 				<flow-ref doc:name="send-email-sub-flow" doc:id="97eab901-d0d2-442e-bf96-f08e5fdefa99" name="send-email-sub-flow" />
-				<file:delete doc:name="invalid file" doc:id="dffb5e7e-db53-4f66-8ea1-da17c19f58df" config-ref="tmp-file-config" path="#[vars.invalidFileAttribs.path]"/>
+				<!-- [STUDIO:"invalid file"]<file:delete doc:name="invalid file" doc:id="dffb5e7e-db53-4f66-8ea1-da17c19f58df" config-ref="tmp-file-config" path="#[vars.invalidFileAttribs.path&#93;"/> [STUDIO] -->
 			</when>
 			<otherwise >
 				<logger level="INFO" doc:name="No invalid data" doc:id="28b5c1fe-9f3b-4295-8494-fc3fb68ea160" message="No invalid data found"/>
@@ -113,7 +115,7 @@ output json
 	</flow>
 	<flow name="archive-file-flow" doc:id="2f1f04b3-e3be-4e60-8b6d-7e67f8336280" >
 		<until-successful maxRetries="${retries.count}" doc:name="Until Successful" doc:id="053c0147-5551-4c4e-9c63-894110373a1f" millisBetweenRetries="${retries.gap}" >
-			<file:move doc:name="Archive the input file" doc:id="5ee3efac-ece4-4bd2-987b-e97bc49b90fa" config-ref="retail-local-config" sourcePath='#[p("sftp.path") ++ "/inventory_$(vars.dateToProcess).csv"]' targetPath='#[p("sftp.archive.path") ++ "/inventory_$(vars.dateToProcess).csv"]'/>
+			<file:move doc:name="Archive the input file" doc:id="5ee3efac-ece4-4bd2-987b-e97bc49b90fa" config-ref="retail-local-config" sourcePath='#[p("sftp.path") ++ "/inventory_$(vars.dateToProcess).csv"]' targetPath='#[p("sftp.archive.path")]'/>
 		</until-successful>
 		<logger level="INFO" doc:name="Logger" doc:id="cb05bc2a-498d-46de-ad2d-c59ace48583a" message="File moved to archive location"/>
 		<error-handler >

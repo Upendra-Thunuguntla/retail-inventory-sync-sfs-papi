@@ -37,12 +37,12 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 
 	<os:config name="os-config" doc:name="ObjectStore Config" doc:id="c3f9da5c-ff77-41a1-83ca-42317f2133dc" />
 	<os:object-store name="summary-os" doc:name="Object store" doc:id="cdfe614b-cf11-4778-bb2c-d76a0ca58200" maxEntries="${os.maxEntries}" entryTtl="${os.ttl}" entryTtlUnit="MINUTES" expirationInterval="${os.expiration}" config-ref="os-config" />
-	<file:config name="tmp-file-config" doc:name="File Config" doc:id="935bde8a-760f-448c-aa6d-ab0b65c3d546" >
-		<file:connection workingDir="/tmp" />
-	</file:config>
+<!-- 	<file:config name="tmp-file-config" doc:name="File Config" doc:id="935bde8a-760f-448c-aa6d-ab0b65c3d546" > -->
+<!-- 		<file:connection workingDir="${sftp.wd}" /> -->
+<!-- 	</file:config> -->
 	<os:object-store name="cache-os" doc:name="Object store" doc:id="af434016-9221-447b-bb13-820210b9bf43" maxEntries="${os.maxEntries}" entryTtl="${os.ttl}" entryTtlUnit="MINUTES" expirationInterval="${os.expiration}" config-ref="os-config" />
 	<ee:object-store-caching-strategy name="cache-config" doc:name="Caching Strategy" doc:id="91a3083f-5f30-4c59-8f4e-a32f6c0430bb" keyGenerationExpression="#[vars.storeId]" objectStore="cache-os" />
 	<file:config name="retail-local-config" doc:name="File Config" doc:id="be321775-562b-4525-8f75-6b29dc35d71a" >
-		<file:connection workingDir="\tmp\retail" />
+		<file:connection workingDir="${sftp.wd}" />
 	</file:config>
 </mule>
